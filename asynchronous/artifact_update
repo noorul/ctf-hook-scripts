@@ -117,12 +117,12 @@ rescue Net::HTTPServerException => e
 end
 
 # Load data bag item, or create it if it doesn't exist yet
-item_id = '#{updated_target_node}_param'
+item_id = "#{updated_target_node.gsub(/\./, '_')}_param"
 begin
-  item = Chef::DataBagItem.load(bagname, updated_target_node)
+  item = Chef::DataBagItem.load(bagname, item_id)
 rescue Net::HTTPServerException => e
   if e.response.code == "404" then
-    syslog.debug("Creating a new data bag item named " + updated_appname + " in data bag " + bagname)
+    syslog.debug("Creating a new data bag item named " + item_id + " in data bag " + bagname)
     item = Chef::DataBagItem.new
     item.data_bag(bagname)
     item['id'] = item_id
