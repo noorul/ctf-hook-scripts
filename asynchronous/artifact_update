@@ -2,4 +2,6 @@
 
 #This script does nothing
 
+echo "Artifact event happened" >> /tmp/events.log
+
 exit 0;
