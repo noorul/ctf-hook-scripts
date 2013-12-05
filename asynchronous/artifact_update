@@ -1,11 +1,9 @@
 #!/opt/chef/embedded/bin/ruby
 
 #
-# artifact_update.rb
+# artifact_update
 #
-# Author:: Julian Dunn (<jdunn@opscode.com>)
-#
-# Copyright 2013, Opscode, Inc.
+# Copyright 2013, CollabNet, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -44,6 +42,7 @@ Chef::Config.from_file(File.join(ENV['HOME'], '.chef', 'knife.rb'))
 bagname = "deploy"
 target_node_field = "Deploy To"
 frsid_field = "FRSID"
+deploy_status = 'Deploy'
 # End global variables
 
 syslog = Syslog.open(::File::basename($0), Syslog::LOG_PID, Syslog::LOG_DAEMON | Syslog::LOG_LOCAL3)
@@ -51,6 +50,16 @@ syslog = Syslog.open(::File::basename($0), Syslog::LOG_PID, Syslog::LOG_DAEMON |
 tf_vars = ENV.to_hash.select { |k,v| k =~ /^tf_/ }
 tf_original_flex_field_vars = tf_vars.select { |k,v| k=~ /^tf_original_flex_field_/ }
 tf_updated_flex_field_vars = tf_vars.select { |k,v| k=~ /^tf_updated_flex_field_/ }
+
+# Find whether there was a status change and the new status is something that we are looking for.
+if tf_vars['tf_original_Status'] == tf_vars['tf_updated_Status'] then
+  syslog.crit("No change in status field, skipping this event.")
+  exit 1
+elsif tf_vars['tf_updated_Status'] != deploy_status then
+  syslog.crit("Status change is not expected status '#{deploy_status}', skipping this event.")
+  exit 1
+end
+
 
 # Find the corresponding values for the vars of interest;
 # We're looking for the value of the flex fields named:
@@ -92,50 +101,42 @@ if (updated_target_node.nil? || updated_frsid.nil?) then
   exit 1
 end
 
-if (original_target_node == updated_target_node) && (original_frsid == updated_frsid) then
-  syslog.debug("No fields of interest changed; exiting")
-  exit 0
+# Make sure data bag exists
+begin
+  bag = Chef::DataBag.load(bagname)
+rescue Net::HTTPServerException => e
+  if e.response.code == "404" then
+    syslog.debug("Creating a new data bag named " + bagname)
+    bag = Chef::DataBag.new
+    bag.name(bagname)
+    bag.save
+  else
+    syslog.crit("Received an HTTPException of type " + e.response.code)
+    raise
+  end
 end
 
-# # Make sure data bag exists
-# begin
-#   bag = Chef::DataBag.load(bagname)
-# rescue Net::HTTPServerException => e
-#   if e.response.code == "404" then
-#     syslog.debug("Creating a new data bag named " + bagname)
-#     bag = Chef::DataBag.new
-#     bag.name(bagname)
-#     bag.save
-#   else
-#     syslog.crit("Received an HTTPException of type " + e.response.code)
-#     raise
-#   end
-# end
-
 # Load data bag item, or create it if it doesn't exist yet
-# item_id = '#{updated_target_node}_param'
-# begin
-#   item = Chef::DataBagItem.load(bagname, updated_target_node)
-# rescue Net::HTTPServerException => e
-#   if e.response.code == "404" then
-#     syslog.debug("Creating a new data bag item named " + updated_appname + " in data bag " + bagname)
-#     item = Chef::DataBagItem.new
-#     item.data_bag(bagname)
-#     item['id'] = item_id
-#   else
-#     syslog.crit("Received an HTTPException of type " + e.response.code)
-#     raise
-#   end
-# end
+item_id = '#{updated_target_node}_param'
+begin
+  item = Chef::DataBagItem.load(bagname, updated_target_node)
+rescue Net::HTTPServerException => e
+  if e.response.code == "404" then
+    syslog.debug("Creating a new data bag item named " + updated_appname + " in data bag " + bagname)
+    item = Chef::DataBagItem.new
+    item.data_bag(bagname)
+    item['id'] = item_id
+  else
+    syslog.crit("Received an HTTPException of type " + e.response.code)
+    raise
+  end
+end
 
-item = Hash.new
 item[item_id].nil? && item[item_id] = Hash.new
 item[item_id]["frsid"] = updated_frsid
 item[item_id]["artifact_id"] = tf_vars['tf_updated_Id']
 item[item_id]["tracker_id"] = tf_vars['tf_updated_FolderId']
 item.save
 
-syslog.info("Information from tracker " + item[item_id])
-
 # Exec knife to log into remote and run Chef once
-# shell_out!("knife ssh '#{updated_target_node}' '[ -e /var/run/chef/client.pid ] && sudo /usr/bin/pkill -USR1 chef-client || sudo /usr/bin/chef-client --once'")
+shell_out!("knife ssh '#{updated_target_node}' '[ -e /var/run/chef/client.pid ] && sudo /usr/bin/pkill -USR1 chef-client || sudo /usr/bin/chef-client --once'")
