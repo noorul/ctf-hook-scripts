@@ -97,37 +97,38 @@ if (original_target_node == updated_target_node) && (original_frsid == updated_f
   exit 0
 end
 
-# Make sure data bag exists
-begin
-  bag = Chef::DataBag.load(bagname)
-rescue Net::HTTPServerException => e
-  if e.response.code == "404" then
-    syslog.debug("Creating a new data bag named " + bagname)
-    bag = Chef::DataBag.new
-    bag.name(bagname)
-    bag.save
-  else
-    syslog.crit("Received an HTTPException of type " + e.response.code)
-    raise
-  end
-end
+# # Make sure data bag exists
+# begin
+#   bag = Chef::DataBag.load(bagname)
+# rescue Net::HTTPServerException => e
+#   if e.response.code == "404" then
+#     syslog.debug("Creating a new data bag named " + bagname)
+#     bag = Chef::DataBag.new
+#     bag.name(bagname)
+#     bag.save
+#   else
+#     syslog.crit("Received an HTTPException of type " + e.response.code)
+#     raise
+#   end
+# end
 
 # Load data bag item, or create it if it doesn't exist yet
-item_id = '#{updated_target_node}_param'
-begin
-  item = Chef::DataBagItem.load(bagname, updated_target_node)
-rescue Net::HTTPServerException => e
-  if e.response.code == "404" then
-    syslog.debug("Creating a new data bag item named " + updated_appname + " in data bag " + bagname)
-    item = Chef::DataBagItem.new
-    item.data_bag(bagname)
-    item['id'] = item_id
-  else
-    syslog.crit("Received an HTTPException of type " + e.response.code)
-    raise
-  end
-end
+# item_id = '#{updated_target_node}_param'
+# begin
+#   item = Chef::DataBagItem.load(bagname, updated_target_node)
+# rescue Net::HTTPServerException => e
+#   if e.response.code == "404" then
+#     syslog.debug("Creating a new data bag item named " + updated_appname + " in data bag " + bagname)
+#     item = Chef::DataBagItem.new
+#     item.data_bag(bagname)
+#     item['id'] = item_id
+#   else
+#     syslog.crit("Received an HTTPException of type " + e.response.code)
+#     raise
+#   end
+# end
 
+item = Hash.new
 item[item_id].nil? && item[item_id] = Hash.new
 item[item_id]["frsid"] = updated_frsid
 item[item_id]["artifact_id"] = tf_vars['tf_updated_Id']
@@ -137,4 +138,4 @@ item.save
 syslog.info("Information from tracker " + item[item_id])
 
 # Exec knife to log into remote and run Chef once
-shell_out!("knife ssh '#{updated_target_node}' '[ -e /var/run/chef/client.pid ] && sudo /usr/bin/pkill -USR1 chef-client || sudo /usr/bin/chef-client --once'")
+# shell_out!("knife ssh '#{updated_target_node}' '[ -e /var/run/chef/client.pid ] && sudo /usr/bin/pkill -USR1 chef-client || sudo /usr/bin/chef-client --once'")
