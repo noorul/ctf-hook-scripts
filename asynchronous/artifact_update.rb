@@ -139,4 +139,8 @@ item[item_id]["tracker_id"] = tf_vars['tf_updated_FolderId']
 item.save
 
 # Exec knife to log into remote and run Chef once
-shell_out!("knife ssh 'name:#{updated_target_node}' '[ -e /var/run/chef/client.pid ] && sudo /usr/bin/pkill -USR1 chef-client || sudo /usr/bin/chef-client --once'")
+cmd = shell_out!("knife ssh 'name:#{updated_target_node}' '[ -e /var/run/chef/client.pid ] && sudo /usr/bin/pkill -USR1 chef-client || sudo /usr/bin/chef-client --once'")
+
+if ENV['DEBUG'] == '1' then
+  puts cmd.stdout
+end

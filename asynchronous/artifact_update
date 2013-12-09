@@ -1,3 +1,6 @@
 #!/bin/sh
 
-`dirname $0`/artifact_update.rb >> /tmp/events.log 2>&1
+export DEBUG=1
+export LOGFILE=/tmp/ctfhooks.log
+
+`dirname $0`/artifact_update.rb >> $LOGFILE 2>&1
