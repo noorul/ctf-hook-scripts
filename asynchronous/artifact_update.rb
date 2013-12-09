@@ -141,6 +141,8 @@ item.save
 # Exec knife to log into remote and run Chef once
 cmd = shell_out!("knife ssh 'name:#{updated_target_node}' '[ -e /var/run/chef/client.pid ] && sudo /usr/bin/pkill -USR1 chef-client || sudo /usr/bin/chef-client --once'")
 
+# If the above command fails an exception is thrown and if it succeeds and DEBUG
+# is enabled the output is logged.
 if ENV['DEBUG'] == '1' then
   puts cmd.stdout
 end

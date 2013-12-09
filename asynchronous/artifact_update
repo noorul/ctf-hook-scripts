@@ -1,6 +1,6 @@
 #!/bin/sh
 
 export DEBUG=1
-export LOGFILE=/tmp/ctfhooks.log
+export LOGFILE=/opt/collabnet/teamforge/log/integration/ctfhooks.log
 
 `dirname $0`/artifact_update.rb >> $LOGFILE 2>&1
